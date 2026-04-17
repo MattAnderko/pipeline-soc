@@ -1,6 +1,11 @@
 <!-- Custom detection rules for pipeline-soc attack chain -->
+<!-- Rules will be added in Task 11 -->
 <group name="local,syslog,">
 
-  <!-- Placeholder: rules added in Task 11 -->
+  <!-- Placeholder rule to keep group valid -->
+  <rule id="100000" level="0">
+    <match>placeholder_rule_do_not_trigger</match>
+    <description>Placeholder rule - do not use</description>
+  </rule>
 
 </group>

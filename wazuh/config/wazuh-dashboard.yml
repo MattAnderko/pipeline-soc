@@ -9,5 +9,6 @@ server.ssl.enabled: true
 server.ssl.key: "/usr/share/wazuh-dashboard/certs/wazuh-dashboard-key.pem"
 server.ssl.certificate: "/usr/share/wazuh-dashboard/certs/wazuh-dashboard.pem"
 opensearch.ssl.certificateAuthorities: ["/usr/share/wazuh-dashboard/certs/root-ca.pem"]
-opensearch.password: SecretPassword
+opensearch.username: kibanaserver
+opensearch.password: kibanaserver
 uiSettings.overrides.defaultRoute: /app/wazuh
