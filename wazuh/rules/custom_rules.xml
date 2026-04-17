@@ -1,0 +1,6 @@
+<!-- Custom detection rules for pipeline-soc attack chain -->
+<group name="local,syslog,">
+
+  <!-- Placeholder: rules added in Task 11 -->
+
+</group>
