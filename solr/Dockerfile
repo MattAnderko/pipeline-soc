@@ -11,6 +11,11 @@ RUN apt-get update && \
     apt-get install -y wazuh-agent=4.7.5-1 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Re-enable Log4Shell vulnerability (educational lab — remove the docker-solr mitigation)
+RUN sed -i "/formatMsgNoLookups=true/d" \
+    /opt/docker-solr/scripts/solr-fg \
+    /opt/docker-solr/scripts/start-local-solr
+
 # Wazuh agent config will be set at runtime via entrypoint
 COPY entrypoint-wrapper.sh /opt/entrypoint-wrapper.sh
 RUN chmod +x /opt/entrypoint-wrapper.sh
