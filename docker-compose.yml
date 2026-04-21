@@ -38,8 +38,9 @@ services:
       - "8983:8983"
     environment:
       - WAZUH_MANAGER=${WAZUH_MANAGER_IP}
+      - SOLR_OPTS=-Dcom.sun.jndi.ldap.object.trustURLCodebase=true -Dcom.sun.jndi.rmi.object.trustURLCodebase=true -Dcom.sun.jndi.cosnaming.object.trustURLCodebase=true
 
-  # ── Victim 2: GitLab (ExifTool RCE + Baron Samedit) ──
+  # ── Victim 2: GitLab (ExifTool RCE + sudoedit bypass) ──
   gitlab:
     build: ./gitlab
     container_name: gitlab

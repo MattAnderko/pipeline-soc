@@ -64,30 +64,30 @@
     <group>execution,command_and_control,</group>
   </rule>
 
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- Phase 3: Privilege Escalation — Baron Samedit (CVE-2021-3156) -->
-  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- Phase 3: Privilege Escalation — sudoedit bypass (CVE-2023-22809) -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
 
-  <!-- Detect sudoedit with suspicious arguments (backslash exploit) -->
+  <!-- Detect SUDO_EDITOR with the `--` separator that enables the bypass -->
   <rule id="100300" level="15">
     <if_sid>1002</if_sid>
-    <match type="pcre2">sudoedit.*-s.*\\\\</match>
-    <description>Baron Samedit exploitation attempt: sudoedit with suspicious backslash arguments (CVE-2021-3156)</description>
+    <match type="pcre2">SUDO_EDITOR=.*\s--\s|VISUAL=.*\s--\s|EDITOR=.*\s--\s</match>
+    <description>CVE-2023-22809 exploitation attempt: SUDO_EDITOR contains -- separator (sudoedit argument bypass)</description>
     <mitre>
       <id>T1068</id>
     </mitre>
-    <group>privilege_escalation,baron_samedit,critical,</group>
+    <group>privilege_escalation,sudoedit_bypass,critical,</group>
   </rule>
 
-  <!-- Detect sudo segfault (crash = successful trigger) -->
+  <!-- Detect sudoedit invoked on sensitive files it shouldn't touch -->
   <rule id="100301" level="14">
     <if_sid>1002</if_sid>
-    <match type="pcre2">sudo(edit)?.*segfault|sudo.*SIGSEGV|traps:.*sudo.*general protection</match>
-    <description>Sudo/sudoedit crash detected — possible Baron Samedit exploitation (CVE-2021-3156)</description>
+    <match type="pcre2">sudoedit.*(/etc/shadow|/etc/passwd|/etc/sudoers|/root/\.ssh/authorized_keys)</match>
+    <description>sudoedit targeting a sensitive system file — possible CVE-2023-22809 abuse</description>
     <mitre>
       <id>T1068</id>
     </mitre>
-    <group>privilege_escalation,baron_samedit,critical,</group>
+    <group>privilege_escalation,sudoedit_bypass,critical,</group>
   </rule>
 
   <!-- Detect unexpected root shell from non-root user -->

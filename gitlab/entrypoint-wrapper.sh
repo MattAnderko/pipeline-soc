@@ -29,5 +29,11 @@ AGENTEOF
   /var/ossec/bin/wazuh-control start &
 fi
 
+# Ensure the CVE-2023-22809 sudoedit target file exists. GitLab's
+# reconfigure can sweep /etc/gitlab, so re-create the trusted file on
+# every boot so the sudoers rule has a valid target.
+mkdir -p /etc/gitlab
+[ -f /etc/gitlab/trusted.conf ] || touch /etc/gitlab/trusted.conf
+
 # Run the original GitLab entrypoint
 exec /assets/wrapper
