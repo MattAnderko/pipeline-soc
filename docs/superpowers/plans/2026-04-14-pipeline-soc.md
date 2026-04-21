@@ -46,7 +46,7 @@ WAZUH_VERSION=4.7.5
 WAZUH_API_USER=wazuh-wui
 WAZUH_API_PASS=MyS3cr3tP4ss
 WAZUH_CLUSTER_KEY=L2F1dG9nZW5lcmF0ZWRjZXJ0aWZpY2F0ZQ==
-WAZUH_INDEXER_PASS=SecretPassword
+WAZUH_INDEXER_PASS=admin
 WAZUH_DASHBOARD_PASS=kibanaserver
 
 # GitLab
@@ -412,7 +412,7 @@ server.ssl.enabled: true
 server.ssl.key: "/usr/share/wazuh-dashboard/certs/wazuh-dashboard-key.pem"
 server.ssl.certificate: "/usr/share/wazuh-dashboard/certs/wazuh-dashboard.pem"
 opensearch.ssl.certificateAuthorities: ["/usr/share/wazuh-dashboard/certs/root-ca.pem"]
-opensearch.password: SecretPassword
+opensearch.password: admin
 uiSettings.overrides.defaultRoute: /app/wazuh
 ```
 
