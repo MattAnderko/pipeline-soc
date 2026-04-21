@@ -26,6 +26,12 @@ RUN mkdir -p /etc/gitlab && \
     chmod 440 /etc/sudoers.d/git-trusted && \
     visudo -c
 
+# Install cron so the T1053.003 persistence step in Phase 4 has a working
+# crontab. GitLab CE's base image intentionally omits it.
+RUN apt-get update && \
+    apt-get install -y cron && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Install Wazuh agent
 RUN curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --dearmor -o /usr/share/keyrings/wazuh.gpg && \
     echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list && \

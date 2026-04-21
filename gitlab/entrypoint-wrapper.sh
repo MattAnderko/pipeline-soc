@@ -35,5 +35,8 @@ fi
 mkdir -p /etc/gitlab
 [ -f /etc/gitlab/trusted.conf ] || touch /etc/gitlab/trusted.conf
 
+# Start cron so Phase 4 (T1053.003) persistence works out of the box.
+service cron start || true
+
 # Run the original GitLab entrypoint
 exec /assets/wrapper

@@ -88,7 +88,7 @@ You now have a reverse shell as the `solr` user.
 
 ### Verify Detection
 
-Open https://localhost:443 → login `wazuh-wui` / `MyS3cr3tP@ss`
+Open https://localhost:443 → login `admin` / `admin`
 Navigate to **Security events** → filter by `rule.id: 100100`
 You should see **"Log4Shell exploitation attempt: JNDI lookup pattern detected"** alerts.
 
