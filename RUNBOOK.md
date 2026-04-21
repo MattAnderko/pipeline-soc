@@ -27,15 +27,16 @@ Verify endpoints respond:
 curl -s -o /dev/null -w "Solr:      %{http_code}\n" http://localhost:8983/solr/admin/cores
 curl -s -o /dev/null -w "GitLab:    %{http_code}\n" http://localhost:8080/users/sign_in
 curl -sk -o /dev/null -w "Dashboard: %{http_code}\n" https://localhost:443/
-curl -sk -u wazuh-wui:MyS3cr3tP@ss -o /dev/null -w "Manager:   %{http_code}\n" "https://localhost:55000/?pretty"
+TOKEN=$(curl -sk -u wazuh-wui:MyS3cr3tP@ss -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+curl -sk -H "Authorization: Bearer $TOKEN" -o /dev/null -w "Manager:   %{http_code}\n" "https://localhost:55000/"
 ```
 
 Expected: all return 200 or 302. If GitLab is still 502, wait 2 minutes and retry.
 
-Verify Wazuh agents are registered:
+Verify Wazuh agents are registered (reuses `$TOKEN` from above):
 
 ```bash
-curl -sk -u wazuh-wui:MyS3cr3tP@ss "https://localhost:55000/agents?pretty" | grep -E '"name"|"status"'
+curl -sk -H "Authorization: Bearer $TOKEN" "https://localhost:55000/agents?pretty" | grep -E '"name"|"status"'
 ```
 
 Expected: 3 agents — `wazuh-manager`, `solr`, `gitlab` — all with `"status": "active"`.

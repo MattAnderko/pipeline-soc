@@ -67,7 +67,7 @@ services:
       - "1515:1515"
       - "55000:55000"
     environment:
-      INDEXER_URL: https://${WAZUH_INDEXER_IP}:9200
+      INDEXER_URL: https://wazuh-indexer:9200
       INDEXER_USERNAME: admin
       INDEXER_PASSWORD: ${WAZUH_INDEXER_PASS}
       FILEBEAT_SSL_VERIFICATION_MODE: full

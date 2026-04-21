@@ -7,7 +7,7 @@
 
   <!-- Detect JNDI lookup strings in any log -->
   <rule id="100100" level="15">
-    <decoded_as>syslog</decoded_as>
+    <if_sid>1002</if_sid>
     <match type="pcre2">(?i)\$\{jndi:(ldap|rmi|dns|iiop|corba|nds|http)s?://</match>
     <description>Log4Shell exploitation attempt: JNDI lookup pattern detected (CVE-2021-44228)</description>
     <mitre>
@@ -18,7 +18,7 @@
 
   <!-- Detect outbound LDAP connections from Solr -->
   <rule id="100101" level="12">
-    <decoded_as>syslog</decoded_as>
+    <if_sid>1002</if_sid>
     <match>LdapCtx</match>
     <description>Suspicious outbound LDAP connection from Java application (possible Log4Shell callback)</description>
     <mitre>
@@ -33,7 +33,7 @@
 
   <!-- Detect ExifTool spawning a shell -->
   <rule id="100200" level="15">
-    <decoded_as>syslog</decoded_as>
+    <if_sid>1002</if_sid>
     <match type="pcre2">exiftool.*(/bin/bash|/bin/sh|/dev/tcp|reverse|shell)</match>
     <description>ExifTool spawning shell: possible CVE-2021-22205 exploitation</description>
     <mitre>
@@ -44,7 +44,7 @@
 
   <!-- Detect DjVu file processing with suspicious metadata -->
   <rule id="100201" level="10">
-    <decoded_as>syslog</decoded_as>
+    <if_sid>1002</if_sid>
     <match type="pcre2">DjVu|djvu.*ANTa|exiftool.*metadata</match>
     <description>DjVu file processing detected — potential ExifTool exploitation vector</description>
     <mitre>
@@ -55,7 +55,7 @@
 
   <!-- Detect suspicious process spawned by git user -->
   <rule id="100202" level="12">
-    <decoded_as>syslog</decoded_as>
+    <if_sid>1002</if_sid>
     <match type="pcre2">git.*(bash -i|/dev/tcp|nc -e|ncat|reverse)</match>
     <description>Git user spawning suspicious process (possible RCE)</description>
     <mitre>
@@ -70,7 +70,7 @@
 
   <!-- Detect sudoedit with suspicious arguments (backslash exploit) -->
   <rule id="100300" level="15">
-    <decoded_as>syslog</decoded_as>
+    <if_sid>1002</if_sid>
     <match type="pcre2">sudoedit.*-s.*\\\\</match>
     <description>Baron Samedit exploitation attempt: sudoedit with suspicious backslash arguments (CVE-2021-3156)</description>
     <mitre>
@@ -81,7 +81,7 @@
 
   <!-- Detect sudo segfault (crash = successful trigger) -->
   <rule id="100301" level="14">
-    <decoded_as>syslog</decoded_as>
+    <if_sid>1002</if_sid>
     <match type="pcre2">sudo(edit)?.*segfault|sudo.*SIGSEGV|traps:.*sudo.*general protection</match>
     <description>Sudo/sudoedit crash detected — possible Baron Samedit exploitation (CVE-2021-3156)</description>
     <mitre>
@@ -92,7 +92,7 @@
 
   <!-- Detect unexpected root shell from non-root user -->
   <rule id="100302" level="13">
-    <decoded_as>syslog</decoded_as>
+    <if_sid>1002</if_sid>
     <match type="pcre2">session opened for user root by.*git|su.*git.*root</match>
     <description>Root session opened by git user — possible privilege escalation</description>
     <mitre>
@@ -118,7 +118,7 @@
 
   <!-- Detect reverse shell commands in cron -->
   <rule id="100401" level="15">
-    <decoded_as>syslog</decoded_as>
+    <if_sid>1002</if_sid>
     <match type="pcre2">cron.*(/dev/tcp|bash -i|nc -e|reverse|mkfifo)</match>
     <description>Reverse shell command in cron job — active persistence with C2 callback</description>
     <mitre>
@@ -140,7 +140,7 @@
 
   <!-- Detect new SSH key added -->
   <rule id="100403" level="13">
-    <decoded_as>syslog</decoded_as>
+    <if_sid>1002</if_sid>
     <match type="pcre2">ssh-rsa|ssh-ed25519.*authorized_keys|echo.*>>.*authorized_keys</match>
     <description>SSH public key being written to authorized_keys — persistence attempt</description>
     <mitre>
