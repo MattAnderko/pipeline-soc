@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     openjdk-11-jdk \
     maven \
     build-essential \
+    djvulibre-bin \
     jq \
     vim \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
