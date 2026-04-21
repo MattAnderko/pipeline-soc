@@ -93,6 +93,7 @@ services:
       - ./wazuh/certs/wazuh-manager-key.pem:/etc/ssl/filebeat-key.pem
       - ./wazuh/rules/custom_rules.xml:/var/ossec/ruleset/rules/local_rules.xml
       - ./wazuh/config/ossec.conf:/wazuh-config-mount/etc/ossec.conf
+      - ./wazuh/config/teams-webhook.sh:/var/ossec/integrations/custom-teams
 
   # ── Wazuh Indexer ──
   wazuh-indexer:
