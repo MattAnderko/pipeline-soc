@@ -1,11 +1,152 @@
-<!-- Custom detection rules for pipeline-soc attack chain -->
-<!-- Rules will be added in Task 11 -->
-<group name="local,syslog,">
+<!-- Pipeline SOC: Custom detection rules for multi-step attack chain -->
+<group name="local,attack-chain,">
 
-  <!-- Placeholder rule to keep group valid -->
-  <rule id="100000" level="0">
-    <match>placeholder_rule_do_not_trigger</match>
-    <description>Placeholder rule - do not use</description>
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- Phase 1: Initial Access — Log4Shell (CVE-2021-44228) -->
+  <!-- ═══════════════════════════════════════════════════ -->
+
+  <!-- Detect JNDI lookup strings in any log -->
+  <rule id="100100" level="15">
+    <decoded_as>syslog</decoded_as>
+    <match type="pcre2">(?i)\$\{jndi:(ldap|rmi|dns|iiop|corba|nds|http)s?://</match>
+    <description>Log4Shell exploitation attempt: JNDI lookup pattern detected (CVE-2021-44228)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>initial_access,log4shell,critical,</group>
+  </rule>
+
+  <!-- Detect outbound LDAP connections from Solr -->
+  <rule id="100101" level="12">
+    <decoded_as>syslog</decoded_as>
+    <match>LdapCtx</match>
+    <description>Suspicious outbound LDAP connection from Java application (possible Log4Shell callback)</description>
+    <mitre>
+      <id>T1071</id>
+    </mitre>
+    <group>initial_access,log4shell,</group>
+  </rule>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- Phase 2: Execution — ExifTool RCE (CVE-2021-22205) -->
+  <!-- ═══════════════════════════════════════════════════ -->
+
+  <!-- Detect ExifTool spawning a shell -->
+  <rule id="100200" level="15">
+    <decoded_as>syslog</decoded_as>
+    <match type="pcre2">exiftool.*(/bin/bash|/bin/sh|/dev/tcp|reverse|shell)</match>
+    <description>ExifTool spawning shell: possible CVE-2021-22205 exploitation</description>
+    <mitre>
+      <id>T1203</id>
+    </mitre>
+    <group>execution,exiftool_rce,critical,</group>
+  </rule>
+
+  <!-- Detect DjVu file processing with suspicious metadata -->
+  <rule id="100201" level="10">
+    <decoded_as>syslog</decoded_as>
+    <match type="pcre2">DjVu|djvu.*ANTa|exiftool.*metadata</match>
+    <description>DjVu file processing detected — potential ExifTool exploitation vector</description>
+    <mitre>
+      <id>T1203</id>
+    </mitre>
+    <group>execution,exiftool_rce,</group>
+  </rule>
+
+  <!-- Detect suspicious process spawned by git user -->
+  <rule id="100202" level="12">
+    <decoded_as>syslog</decoded_as>
+    <match type="pcre2">git.*(bash -i|/dev/tcp|nc -e|ncat|reverse)</match>
+    <description>Git user spawning suspicious process (possible RCE)</description>
+    <mitre>
+      <id>T1059.004</id>
+    </mitre>
+    <group>execution,command_and_control,</group>
+  </rule>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- Phase 3: Privilege Escalation — Baron Samedit (CVE-2021-3156) -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <!-- Detect sudoedit with suspicious arguments (backslash exploit) -->
+  <rule id="100300" level="15">
+    <decoded_as>syslog</decoded_as>
+    <match type="pcre2">sudoedit.*-s.*\\\\</match>
+    <description>Baron Samedit exploitation attempt: sudoedit with suspicious backslash arguments (CVE-2021-3156)</description>
+    <mitre>
+      <id>T1068</id>
+    </mitre>
+    <group>privilege_escalation,baron_samedit,critical,</group>
+  </rule>
+
+  <!-- Detect sudo segfault (crash = successful trigger) -->
+  <rule id="100301" level="14">
+    <decoded_as>syslog</decoded_as>
+    <match type="pcre2">sudo(edit)?.*segfault|sudo.*SIGSEGV|traps:.*sudo.*general protection</match>
+    <description>Sudo/sudoedit crash detected — possible Baron Samedit exploitation (CVE-2021-3156)</description>
+    <mitre>
+      <id>T1068</id>
+    </mitre>
+    <group>privilege_escalation,baron_samedit,critical,</group>
+  </rule>
+
+  <!-- Detect unexpected root shell from non-root user -->
+  <rule id="100302" level="13">
+    <decoded_as>syslog</decoded_as>
+    <match type="pcre2">session opened for user root by.*git|su.*git.*root</match>
+    <description>Root session opened by git user — possible privilege escalation</description>
+    <mitre>
+      <id>T1068</id>
+    </mitre>
+    <group>privilege_escalation,</group>
+  </rule>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- Phase 4: Persistence (T1053.003 + T1098.004)      -->
+  <!-- ═══════════════════════════════════════════════════ -->
+
+  <!-- Detect new crontab entries -->
+  <rule id="100400" level="12">
+    <if_sid>550</if_sid>
+    <match type="pcre2">crontab|/var/spool/cron|/etc/cron</match>
+    <description>Crontab modification detected — potential persistence mechanism (T1053.003)</description>
+    <mitre>
+      <id>T1053.003</id>
+    </mitre>
+    <group>persistence,cron,</group>
+  </rule>
+
+  <!-- Detect reverse shell commands in cron -->
+  <rule id="100401" level="15">
+    <decoded_as>syslog</decoded_as>
+    <match type="pcre2">cron.*(/dev/tcp|bash -i|nc -e|reverse|mkfifo)</match>
+    <description>Reverse shell command in cron job — active persistence with C2 callback</description>
+    <mitre>
+      <id>T1053.003</id>
+    </mitre>
+    <group>persistence,cron,command_and_control,critical,</group>
+  </rule>
+
+  <!-- Detect authorized_keys modification -->
+  <rule id="100402" level="12">
+    <if_sid>550</if_sid>
+    <match type="pcre2">authorized_keys</match>
+    <description>SSH authorized_keys file modified — potential SSH key persistence (T1098.004)</description>
+    <mitre>
+      <id>T1098.004</id>
+    </mitre>
+    <group>persistence,ssh,</group>
+  </rule>
+
+  <!-- Detect new SSH key added -->
+  <rule id="100403" level="13">
+    <decoded_as>syslog</decoded_as>
+    <match type="pcre2">ssh-rsa|ssh-ed25519.*authorized_keys|echo.*>>.*authorized_keys</match>
+    <description>SSH public key being written to authorized_keys — persistence attempt</description>
+    <mitre>
+      <id>T1098.004</id>
+    </mitre>
+    <group>persistence,ssh,</group>
   </rule>
 
 </group>
