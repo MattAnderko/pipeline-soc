@@ -277,9 +277,9 @@ You should also see FIM alerts for `/root/.ssh/authorized_keys` changes.
 
 ## 5. Wazuh Dashboard Setup
 
-Open https://localhost:443 → login `admin` / `SecretPassword`.
+Open https://localhost:443 → login `admin` / `admin`.
 
-(The `admin` user is the OpenSearch dashboard user, set via `WAZUH_INDEXER_PASS` in `.env`. The `wazuh-wui` account is only for the Wazuh API on port 55000 — not the dashboard UI.)
+(The default OpenSearch admin password baked into the Wazuh indexer image. The `WAZUH_INDEXER_PASS` env var is supposed to override it during init, but only takes effect on a fresh security index. To change the password, you'd need to run the `securityadmin.sh` tool inside the indexer container. The `wazuh-wui` / `MyS3cr3tP@ss` account is only for the Wazuh API on port 55000 — not the dashboard UI.)
 
 ### Create the Index Pattern
 
